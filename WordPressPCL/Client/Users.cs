@@ -65,17 +65,31 @@ namespace WordPressPCL.Client
         /// <returns>List of all result</returns>
         public async Task<List<User>> GetAllAsync(bool embed = false, bool useAuth = false)
         {
+            string contextEdit = getContextEdit(embed, useAuth);
+
             //100 - Max posts per page in WordPress REST API, so this is hack with multiple requests
-            var entities = (await _httpHelper.GetRequestAsync<List<User>>($"{METHOD_PATH}?per_page=100&page=1", embed, useAuth).ConfigureAwait(false))?.ToList();
+            var entities = (await _httpHelper.GetRequestAsync<List<User>>($"{METHOD_PATH}?{contextEdit}&per_page=100&page=1", embed, useAuth).ConfigureAwait(false))?.ToList();
             if (_httpHelper.LastResponseHeaders.Contains("X-WP-TotalPages") && Convert.ToInt32(_httpHelper.LastResponseHeaders.GetValues("X-WP-TotalPages").FirstOrDefault(), CultureInfo.InvariantCulture) > 1)
             {
                 int totalpages = Convert.ToInt32(_httpHelper.LastResponseHeaders.GetValues("X-WP-TotalPages").FirstOrDefault(), CultureInfo.InvariantCulture);
                 for (int page = 2; page <= totalpages; page++)
                 {
-                    entities.AddRange((await _httpHelper.GetRequestAsync<List<User>>($"{METHOD_PATH}?per_page=100&page={page}", embed, useAuth).ConfigureAwait(false))?.ToList());
+                    entities.AddRange((await _httpHelper.GetRequestAsync<List<User>>($"{METHOD_PATH}?{contextEdit}&per_page=100&page={page}", embed, useAuth).ConfigureAwait(false))?.ToList());
                 }
             }
             return entities;
+        }
+
+        private static string getContextEdit(bool embed, bool useAuth)
+        {
+            string contextEdit = "";
+
+            if (embed && useAuth)
+            {
+                contextEdit += $"context=edit";
+            }
+
+            return contextEdit;
         }
 
         /// <summary>
@@ -87,7 +101,9 @@ namespace WordPressPCL.Client
         /// <returns>Entity by Id</returns>
         public Task<User> GetByIDAsync(object ID, bool embed = false, bool useAuth = false)
         {
-            return _httpHelper.GetRequestAsync<User>($"{METHOD_PATH}/{ID}", embed, useAuth);
+            //note: adding this doesn't seem to work.  
+            //string contextEdit = getContextEdit(embed, useAuth);
+            return _httpHelper.GetRequestAsync<User>($"{METHOD_PATH}/", embed, useAuth);
         }
 
         /// <summary>
